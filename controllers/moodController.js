@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const Mood = require('../models/mood');
 const User = require('../models/user');
+const { CanvasRenderService } = require('chartjs-node-canvas');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -189,10 +190,49 @@ exports.disableSharing = async (req, res) => {
  
 exports.getMoodInsights = async (req, res) => {
   try {
-    // Implement logic to retrieve mood insights
-    // ...
-    res.json({}); // Placeholder response
-  } catch (error) {
+    const userId = req.user.userId; // Get the user ID from the authenticated user's token
+
+    // Query the database for all mood entries of the user, grouped by date
+    const moods = await Mood.aggregate([
+      { $match: { userId } },
+      { $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' },
+          },
+          averageMood: { $avg: '$mood' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+    ]);
+
+    // Prepare the data for Chart.js
+    const labels = moods.map(mood => `${mood._id.day}-${mood._id.month}-${mood._id.year}`);
+    const data = moods.map(mood => mood.averageMood);
+
+    // Create a Chart.js configuration
+    const configuration = {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Average Mood',
+          data,
+          fill: false,
+          borderColor: 'rgb(75, 192, 192)',
+          tension: 0.1
+        }]
+      }
+    };
+
+    // Render the chart using Chart.js and chartjs-node-canvas
+    const canvasRenderService = new CanvasRenderService(800, 600);
+    const image = await canvasRenderService.renderToBuffer(configuration);
+
+    // Send the image as a response
+    res.set('Content-Type', 'image/png');
+    res.send(image);  } catch (error) {
     res.status(500).json({ error: 'Failed to retrieve mood insights' });
   }
 };
