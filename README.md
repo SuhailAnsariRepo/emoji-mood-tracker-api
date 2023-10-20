@@ -46,33 +46,34 @@ The API documentation, including available endpoints, request formats, and respo
 
 ## Endpoints
 ### Authentication:
-POST /api/auth/register: Register a new user.
-POST /api/auth/login: Authenticate existing user.
+- POST `/api/auth/register`: Register a new user.
+- POST `/api/auth/login`: Authenticate an existing user.
 
 ### Mood Entries:
-POST /api/moods: Log a new mood entry.
-GET /api/moods: Get mood entries based on filters.
-PUT /api/moods/:id: Update a specific mood entry.
-DELETE /api/moods/:id: Delete a specific mood entry.
+- POST `/api/moods`: Log a new mood entry.
+- GET `/api/moods`: Get mood entries based on filters.
+- PUT `/api/moods/:id`: Update a specific mood entry.
+- DELETE `/api/moods/:id`: Delete a specific mood entry.
 
 ### Mood Summaries:
-GET /api/moods/summary/:year/:month: Get summary of user's moods for a specific month.
+- GET `/api/moods/summary/:year/:month`: Get a summary of the user's moods for a specific month.
 
 ### Emoji Statistics:
-GET /api/moods/statistics: Get statistics on emoji usage over time.
+- GET `/api/moods/statistics`: Get statistics on emoji usage over time.
 
 ### Sharing and Collaboration:
-POST /api/moods/share: Generate a unique link to share mood history.
-PUT /api/moods/share: Disable mood history sharing.
+- POST `/api/moods/share`: Generate a unique link to share mood history.
+- PUT `/api/moods/share`: Disable mood history sharing.
 
 ### Data Insights:
-GET /api/moods/insights: Get insights into mood trends using data visualization.
+- GET `/api/moods/insights`: Get insights into mood trends using data visualization.
 
 ### Emoji Suggestions:
-GET /api/moods/suggestions: Get emoji suggestions based on mood notes.
+- GET `/api/moods/suggestions`: Get emoji suggestions based on mood notes.
 
 ### Public Mood Board:
-GET /api/moods/public: Get aggregated, anonymized mood data for public mood board.
+- GET `/api/moods/public`: Get aggregated, anonymized mood data for the public mood board.
+
 
 # License
 This project is licensed under the MIT License.
