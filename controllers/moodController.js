@@ -136,6 +136,13 @@ exports.getMonthlySummary = async (req, res) => {
   }
 };
 
+/*
+In this code, Mood.aggregate is used to perform the aggregation. 
+The $match stage filters the mood entries by user ID. 
+The $group stage groups the entries by emoji and date ($year, $month, and $dayOfMonth are used to extract the year, month, and day from the createdAt date), 
+and $sum is used to count the number of entries in each group. The $sort stage sorts the results by date.
+*/
+
 exports.getEmojiStatistics = async (req, res) => {
   try {
      // Get the user ID from the authenticated user's token
