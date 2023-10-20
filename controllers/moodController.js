@@ -48,6 +48,12 @@ exports.logMood = async (req, res) => {
   }
 };
 
+/*
+Mood.find is used to query the database for mood entries that match the specified criteria. 
+The startDate, endDate, and sortOrder are taken from the request’s query parameters. 
+The dates are parsed into JavaScript Date objects and the sort order is parsed into a number (-1 for descending order, 1 for ascending order). 
+These values are used to build a MongoDB query that retrieves the mood entries within the specified date range and sorts them by their creation date.
+*/
 exports.getMoodEntries = async (req, res) => {
   try {
     const userId = req.user.userId; // Get the user ID from the authenticated user's token
@@ -231,11 +237,11 @@ exports.disableSharing = async (req, res) => {
     }
   };
  
-  /* 
-  Mood.aggregate is used to group mood entries by date and calculate the average mood for each day.
-  The CanvasRenderService from chartjs-node-canvas is used to render a Chart.js chart as an image. 
-  The image is then sent as a response with the content type set to 'image/png'.
-  */
+/* 
+Mood.aggregate is used to group mood entries by date and calculate the average mood for each day.
+The CanvasRenderService from chartjs-node-canvas is used to render a Chart.js chart as an image. 
+The image is then sent as a response with the content type set to 'image/png'.
+*/
 exports.getMoodInsights = async (req, res) => {
   try {
     const userId = req.user.userId; // Get the user ID from the authenticated user's token
