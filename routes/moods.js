@@ -21,7 +21,7 @@ router.get('/moods/statistics', authenticate, moodController.getEmojiStatistics)
 
 // Sharing and Collaboration Routes (Protected with Authentication)
 router.post('/moods/share', authenticate, moodController.generateShareLink);
-router.delete('/moods/share', authenticate, moodController.disableSharing);
+router.put('/moods/share', authenticate, moodController.disableSharing);
 
 // Data Insights Route (Protected with Authentication)
 router.get('/moods/insights', authenticate, moodController.getMoodInsights);
