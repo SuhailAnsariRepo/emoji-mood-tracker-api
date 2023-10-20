@@ -212,6 +212,11 @@ exports.disableSharing = async (req, res) => {
     }
   };
  
+  /* 
+  Mood.aggregate is used to group mood entries by date and calculate the average mood for each day.
+  The CanvasRenderService from chartjs-node-canvas is used to render a Chart.js chart as an image. 
+  The image is then sent as a response with the content type set to 'image/png'.
+  */
 exports.getMoodInsights = async (req, res) => {
   try {
     const userId = req.user.userId; // Get the user ID from the authenticated user's token
