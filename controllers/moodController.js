@@ -145,7 +145,7 @@ exports.getMoodInsights = async (req, res) => {
 
 exports.getEmojiSuggestions = async (req, res) => {
   try {
-    const { moodNote } = req.body;
+    const { note } = req.body;
     let emojiSuggestions = [];
     if (moodNote.includes('happy')) {
       emojiSuggestions.push('😊', '😃', '😄', '😁');
