@@ -260,9 +260,17 @@ exports.getEmojiSuggestions = async (req, res) => {
 
 exports.getPublicMoodBoard = async (req, res) => {
   try {
-    // Implement logic to retrieve public mood board data
-    // ...
-    res.json([]); // Placeholder response
+    // Query the database for all mood entries, grouped by emoji
+    const moods = await Mood.aggregate([
+      { $group: {
+          _id: '$emoji',
+          count: { $sum: 1 },
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    res.json(moods);
   } catch (error) {
     res.status(500).json({ error: 'Failed to retrieve public mood board data' });
   }
