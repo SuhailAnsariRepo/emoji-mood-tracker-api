@@ -50,8 +50,27 @@ exports.logMood = async (req, res) => {
 
 exports.getMoodEntries = async (req, res) => {
   try {
-    const moods = await Mood.find({ userId: req.user.userId });
+    const userId = req.user.userId; // Get the user ID from the authenticated user's token
+    const { startDate, endDate, sortOrder } = req.query;
+
+    // Parse the dates and sort order
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+    const sort = sortOrder === 'desc' ? -1 : 1;
+
+    // Build the query
+    const query = { userId };
+    if (start || end) {
+      query.createdAt = {};
+      if (start) query.createdAt.$gte = start;
+      if (end) query.createdAt.$lt = end;
+    }
+
+    // Query the database for mood entries of the user within the specified date range, sorted by creation date
+    const moods = await Mood.find(query).sort({ createdAt: sort });
+
     res.json(moods);
+
   } catch (error) {
     res.status(500).json({ error: 'Failed to get mood entries' });
   }
