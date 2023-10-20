@@ -145,9 +145,20 @@ exports.getMoodInsights = async (req, res) => {
 
 exports.getEmojiSuggestions = async (req, res) => {
   try {
-    // Implement logic to retrieve emoji suggestions
-    // ...
-    res.json({ suggestions: ['😊', '😄', '😢'] }); // Placeholder response
+    const { moodNote } = req.body;
+    let emojiSuggestions = [];
+    if (moodNote.includes('happy')) {
+      emojiSuggestions.push('😊', '😃', '😄', '😁');
+    } else if (moodNote.includes('sad')) {
+      emojiSuggestions.push('😢', '😭', '😞', '😔');
+    } else if (moodNote.includes('angry')) {
+      emojiSuggestions.push('🤬', '😠', '👿', '💢');
+    } else if (moodNote.includes('excited')) {
+      emojiSuggestions.push('🤩', '🥳', '🎉', '🎊');
+    } else {
+      emojiSuggestions.push('🤔', '😐', '🤷‍♀️', '🤷‍♂️');
+    }
+    res.json({ emojiSuggestions });
   } catch (error) {
     res.status(500).json({ error: 'Failed to retrieve emoji suggestions' });
   }
