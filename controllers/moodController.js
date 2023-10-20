@@ -107,9 +107,23 @@ exports.getEmojiStatistics = async (req, res) => {
 
 exports.generateShareLink = async (req, res) => {
   try {
-    // Implement logic to generate share link
-    // ...
-    res.json({ shareLink: 'unique_link_here' }); // Placeholder response
+    const userId = req.user.userId; // Get the user ID from the authenticated user's token
+
+    // Generate a random string to use as the unique part of the share link
+    const shareId = crypto.randomBytes(16).toString('hex');
+
+    // Find the user in the database and update their 'shareId'
+    const user = await User.findOneAndUpdate({ _id: userId }, { shareId }, { new: true });
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    // Construct the share link
+    const shareLink = `https://emojimoodtracker.com/moods/share/${shareId}`;
+
+    res.json({ shareLink });
   } catch (error) {
     res.status(500).json({ error: 'Failed to generate share link' });
   }
