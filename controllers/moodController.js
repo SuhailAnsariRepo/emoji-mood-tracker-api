@@ -138,9 +138,26 @@ exports.getMonthlySummary = async (req, res) => {
 
 exports.getEmojiStatistics = async (req, res) => {
   try {
-    // Implement logic to retrieve emoji statistics
-    // ...
-    res.json({}); // Placeholder response
+     // Get the user ID from the authenticated user's token
+     const userId = req.user.userId;
+
+     // Query the database for all mood entries of the user, grouped by emoji and date
+     const stats = await Mood.aggregate([
+       { $match: { userId } },
+       { $group: {
+           _id: {
+             emoji: '$emoji',
+             year: { $year: '$createdAt' },
+             month: { $month: '$createdAt' },
+             day: { $dayOfMonth: '$createdAt' },
+           },
+           count: { $sum: 1 }
+         }
+       },
+       { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+     ]);
+ 
+     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: 'Failed to retrieve emoji statistics' });
   }
