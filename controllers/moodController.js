@@ -85,11 +85,51 @@ exports.deleteMood = async (req, res) => {
   }
 };
 
+
+/* 
+In this code, Mood.aggregate is used to perform the aggregation. 
+The $match stage filters the mood entries by user ID and date. 
+The $group stage groups the entries by emoji and uses $sum to count the number of entries for each emoji and $push to collect all notes for each emoji. 
+The $sort stage sorts the results by count in descending order.
+*/
 exports.getMonthlySummary = async (req, res) => {
   try {
-    // Implement logic to retrieve monthly summary
-    // ...
-    res.json({}); // Placeholder response
+    const userId = req.user.userId; // Get the user ID from the authenticated user's token
+    const year = parseInt(req.params.year);
+    const month = parseInt(req.params.month);
+
+    // Check if year and month parameters are valid
+    if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+      res.status(400).json({ error: 'Invalid year or month' });
+      return;
+    }
+
+    // Query the database for all mood entries of the user for the specified month, grouped by emoji
+    const moods = await Mood.aggregate([
+      { $match: {
+          userId,
+          createdAt: {
+            $gte: new Date(year, month - 1, 1),
+            $lt: new Date(year, month % 12, 1)
+          }
+        }
+      },
+      { $group: {
+          _id: '$emoji',
+          count: { $sum: 1 },
+          notes: { $push: '$note' }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Check if there are any mood entries for the specified month
+    if (moods.length === 0) {
+      res.status(404).json({ error: 'No mood entries found for the specified month' });
+      return;
+    }
+
+    res.json(moods);
   } catch (error) {
     res.status(500).json({ error: 'Failed to retrieve monthly summary' });
   }
