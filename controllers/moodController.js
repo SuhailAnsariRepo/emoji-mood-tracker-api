@@ -147,13 +147,13 @@ exports.getEmojiSuggestions = async (req, res) => {
   try {
     const { note } = req.body;
     let emojiSuggestions = [];
-    if (moodNote.includes('happy')) {
+    if (note.includes('happy')) {
       emojiSuggestions.push('😊', '😃', '😄', '😁');
-    } else if (moodNote.includes('sad')) {
+    } else if (note.includes('sad')) {
       emojiSuggestions.push('😢', '😭', '😞', '😔');
-    } else if (moodNote.includes('angry')) {
+    } else if (note.includes('angry')) {
       emojiSuggestions.push('🤬', '😠', '👿', '💢');
-    } else if (moodNote.includes('excited')) {
+    } else if (note.includes('excited')) {
       emojiSuggestions.push('🤩', '🥳', '🎉', '🎊');
     } else {
       emojiSuggestions.push('🤔', '😐', '🤷‍♀️', '🤷‍♂️');
