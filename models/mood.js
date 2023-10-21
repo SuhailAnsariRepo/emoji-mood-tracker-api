@@ -1,13 +1,33 @@
 const mongoose = require('mongoose');
 
 const moodSchema = new mongoose.Schema({
-  emoji: { type: String, required: true },
-  note: { type: String },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user',
+        required: true,
+    },
+    emoji: {
+        type: String,
+        required: true,
+    },
+    note: {
+        type: String,
+        required: true,
+    },
+    timestamp: {
+        type: Date,
+        default: Date.now,
+    },
+    updated: {
+        type: Date,
+        default: Date.now,
+    },
+
 });
 
-const Mood = mongoose.model('Mood', moodSchema);
+moodSchema.pre('save', function (next) {
+    this.updated = new Date();
+    next();
+});
+module.exports = mongoose.model('mood', moodSchema);
 
-module.exports = Mood;

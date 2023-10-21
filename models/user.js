@@ -1,12 +1,29 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  username: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  sharingEnabled: { type: Boolean, default: true }, // Default to true if sharing is enabled by default
-  shareId: { type: String } // New field for storing the unique share ID
+    username: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    password: {
+        type: String,
+        required: true,
+    },
+    name: {
+        type: String,
+        required: true,
+    },
+    email: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    sharingEnabled: {
+        type: Boolean,
+        default: true
+    }
+
 });
+module.exports = mongoose.model('user', userSchema);
 
-const User = mongoose.model('User', userSchema);
-
-module.exports = User;

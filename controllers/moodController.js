@@ -1,331 +1,363 @@
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 const Mood = require('../models/mood');
 const User = require('../models/user');
-const { CanvasRenderService } = require('chartjs-node-canvas');
+const { ErrorHandler } = require('../middleware/authenticate');
+const emojiRegex = require('emoji-regex');
+const accessTokenSecret = process.env.JWT_SECRET || "secret";
+const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
-exports.registerUser = async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({ username, password: hashedPassword });
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
-    res.json({ token });
-  } catch (error) {
-    res.status(500).json({ error: 'Registration failed' });
-  }
+const moodSuggestions = {
+    happy: '😄',
+    sad: '😢',
+    love: '❤️',
+    excited: '🎉',
+    happy: '😄',
+    sad: '😢',
+    love: '❤️',
+    excited: '🎉',
+    anger: '😡',
+    surprise: '😲',
+    cool: '😎',
+    laughing: '😂',
+    thumbsUp: '👍',
+    thumbsDown: '👎',
+    heartEyes: '😍',
+    crying: '😭',
+    sleeping: '😴',
+    peace: '✌️',
+    celebration: '🥳',
+    thinking: '🤔',
+    dancing: '💃',
+    grinning: '😁',
+    confused: '😕',
+    nerd: '🤓',
+    zippedMouth: '🤐',
+    rainbow: '🌈',
+    clown: '🤡',
+    money: '💰',
+    rocket: '🚀',
+    fire: '🔥',
+    heart: '❤️',
+    star: '⭐',
+    sun: '☀️',
+    moon: '🌙',
+    party: '🎉',
+    thumbsUp2: '👍🏼',
+    thumbsDown2: '👎🏼',
 };
 
-exports.loginUser = async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    const user = await User.findOne({ username });
-    if (!user) {
-      res.status(401).json({ error: 'Invalid credentials' });
-      return;
-    }
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      res.status(401).json({ error: 'Invalid credentials' });
-      return;
-    }
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
-    res.json({ token });
-  } catch (error) {
-    res.status(500).json({ error: 'Login failed' });
-  }
-};
+const containsOnlyEmoji = (text) => {
+    const characters = [...text];
 
-exports.logMood = async (req, res) => {
-  try {
-    const { emoji, note } = req.body;
-    const moodEntry = await Mood.create({ emoji, note, userId: req.user.userId });
-    res.json(moodEntry);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to log mood entry' });
-  }
-};
+    const emojiPattern = emojiRegex();
 
-/*
-Mood.find is used to query the database for mood entries that match the specified criteria. 
-The startDate, endDate, and sortOrder are taken from the request’s query parameters. 
-The dates are parsed into JavaScript Date objects and the sort order is parsed into a number (-1 for descending order, 1 for ascending order). 
-These values are used to build a MongoDB query that retrieves the mood entries within the specified date range and sorts them by their creation date.
-*/
-exports.getMoodEntries = async (req, res) => {
-  try {
-    const userId = req.user.userId; // Get the user ID from the authenticated user's token
-    const { startDate, endDate, sortOrder } = req.query;
-
-    // Parse the dates and sort order
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
-    const sort = sortOrder === 'desc' ? -1 : 1;
-
-    // Build the query
-    const query = { userId };
-    if (start || end) {
-      query.createdAt = {};
-      if (start) query.createdAt.$gte = start;
-      if (end) query.createdAt.$lt = end;
-    }
-
-    // Query the database for mood entries of the user within the specified date range, sorted by creation date
-    const moods = await Mood.find(query).sort({ createdAt: sort });
-
-    res.json(moods);
-
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get mood entries' });
-  }
-};
-
-exports.updateMood = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { emoji, note } = req.body;
-    const updatedMood = await Mood.findOneAndUpdate({ _id: id, userId: req.user.userId }, { emoji, note }, { new: true });
-    if (!updatedMood) {
-      res.status(404).json({ error: 'Mood entry not found' });
-      return;
-    }
-    res.json(updatedMood);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update mood entry' });
-  }
-};
-
-exports.deleteMood = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const deletedMood = await Mood.findOneAndDelete({ _id: id, userId: req.user.userId });
-    if (!deletedMood) {
-      res.status(404).json({ error: 'Mood entry not found' });
-      return;
-    }
-    res.json({ message: 'Mood entry deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete mood entry' });
-  }
-};
-
-
-/* 
-In this code, Mood.aggregate is used to perform the aggregation. 
-The $match stage filters the mood entries by user ID and date. 
-The $group stage groups the entries by emoji and uses $sum to count the number of entries for each emoji and $push to collect all notes for each emoji. 
-The $sort stage sorts the results by count in descending order.
-*/
-exports.getMonthlySummary = async (req, res) => {
-  try {
-    const userId = req.user.userId; // Get the user ID from the authenticated user's token
-    const year = parseInt(req.params.year);
-    const month = parseInt(req.params.month);
-
-    // Check if year and month parameters are valid
-    if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
-      res.status(400).json({ error: 'Invalid year or month' });
-      return;
-    }
-
-    // Query the database for all mood entries of the user for the specified month, grouped by emoji
-    const moods = await Mood.aggregate([
-      { $match: {
-          userId,
-          createdAt: {
-            $gte: new Date(year, month - 1, 1),
-            $lt: new Date(year, month % 12, 1)
-          }
+    for (const character of characters) {
+        if (!emojiPattern.test(character)) {
+            return false;
         }
-      },
-      { $group: {
-          _id: '$emoji',
-          count: { $sum: 1 },
-          notes: { $push: '$note' }
-        }
-      },
-      { $sort: { count: -1 } }
-    ]);
-
-    // Check if there are any mood entries for the specified month
-    if (moods.length === 0) {
-      res.status(404).json({ error: 'No mood entries found for the specified month' });
-      return;
     }
 
-    res.json(moods);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve monthly summary' });
-  }
+    return true;
 };
-
-/*
-In this code, Mood.aggregate is used to perform the aggregation. 
-The $match stage filters the mood entries by user ID. 
-The $group stage groups the entries by emoji and date ($year, $month, and $dayOfMonth are used to extract the year, month, and day from the createdAt date), 
-and $sum is used to count the number of entries in each group. The $sort stage sorts the results by date.
-*/
-
-exports.getEmojiStatistics = async (req, res) => {
-  try {
-     // Get the user ID from the authenticated user's token
-     const userId = req.user.userId;
-
-     // Query the database for all mood entries of the user, grouped by emoji and date
-     const stats = await Mood.aggregate([
-       { $match: { userId } },
-       { $group: {
-           _id: {
-             emoji: '$emoji',
-             year: { $year: '$createdAt' },
-             month: { $month: '$createdAt' },
-             day: { $dayOfMonth: '$createdAt' },
-           },
-           count: { $sum: 1 }
-         }
-       },
-       { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
-     ]);
- 
-     res.json(stats);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve emoji statistics' });
-  }
-};
-
-exports.generateShareLink = async (req, res) => {
-  try {
-    const userId = req.user.userId; // Get the user ID from the authenticated user's token
-
-    // Generate a random string to use as the unique part of the share link
-    const shareId = crypto.randomBytes(16).toString('hex');
-
-    // Find the user in the database and update their 'shareId'
-    const user = await User.findOneAndUpdate({ _id: userId }, { shareId }, { new: true });
-
-    if (!user) {
-      res.status(404).json({ error: 'User not found' });
-      return;
-    }
-
-    // Construct the share link
-    const shareLink = `https://emojimoodtracker.com/moods/share/${shareId}`;
-
-    res.json({ shareLink });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to generate share link' });
-  }
-};
-
-exports.disableSharing = async (req, res) => {
+const add = async (req, res, next) => {
     try {
-      const userId = req.user.userId; // Get the user ID from the authenticated user's token
-      
-      // Find the user in the database and update the 'sharingEnabled' flag to false
-      const user = await User.findOneAndUpdate({ _id: userId }, { sharingEnabled: false }, { new: true });
-      
-      if (!user) {
-        res.status(404).json({ error: 'User not found' });
-        return;
-      }
-  
-      res.json({ message: 'Mood history sharing disabled successfully' });
+        const user = req.user;
+        let { emoji, note } = req.body;
+        if (!emoji || !note) {
+            return res.status(400).json('Missing required field(s). Please provide all required data.');
+        }
+
+        if (!containsOnlyEmoji(emoji)) {
+            return res.status(400).json('Invalid emoji, it should consist of only one valid emoji character.');
+        }
+
+        let mood = new Mood({
+            ...req.body,
+            userId: user._id
+        });
+        mood = await mood.save();
+
+        return res.json(mood);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to disable mood history sharing' });
+        return ErrorHandler(req, res, next, error);
     }
-  };
- 
-/* 
-Mood.aggregate is used to group mood entries by date and calculate the average mood for each day.
-The CanvasRenderService from chartjs-node-canvas is used to render a Chart.js chart as an image. 
-The image is then sent as a response with the content type set to 'image/png'.
-*/
-exports.getMoodInsights = async (req, res) => {
-  try {
-    const userId = req.user.userId; // Get the user ID from the authenticated user's token
+};
 
-    // Query the database for all mood entries of the user, grouped by date
-    const moods = await Mood.aggregate([
-      { $match: { userId } },
-      { $group: {
-          _id: {
-            year: { $year: '$createdAt' },
-            month: { $month: '$createdAt' },
-            day: { $dayOfMonth: '$createdAt' },
+const update = async (req, res, next) => {
+    try {
+        const user = req.user;
+        let { emoji, note } = req.body;
+        if (!emoji && !note) {
+            return res.status(400).json('Missing required field(s). Please provide all required data.');
+        }
+
+        if (emoji) {
+            if (!containsOnlyEmoji(emoji)) {
+                return res.status(400).json('Invalid emoji, it should consist of only one valid emoji character.');
+            }
+        }
+
+        if (!req.params.id) {
+            return res.status(400).json('Missing required field(s). Please provide all required data.');
+        }
+
+        let mood = await Mood.findOne({ "_id": req.params.id, userId: user._id });
+        if (!mood) {
+            return res.status(400).json("Invalid id, or you don't have access to modify this.");
+        }
+
+        if (emoji) {
+            mood.emoji = emoji;
+        }
+
+        if (note) {
+            mood.note = note;
+        }
+
+        mode = await mood.save();
+        return res.json(mood);
+    } catch (error) {
+        return ErrorHandler(req, res, next, error);
+    }
+};
+
+const deleteMood = async (req, res, next) => {
+    try {
+        const user = req.user;
+        if (!req.params.id) {
+            return res.status(400).json('Missing required field(s). Please provide all required data.');
+        }
+
+        let mood = await Mood.findOne({ "_id": req.params.id, userId: user._id });
+        if (!mood) {
+            return res.status(400).json("Invalid id, or you don't have access to modify this.");
+        }
+
+        await Mood.deleteOne({ _id: req.params.id });
+        return res.json('Mood entry deleted successfully.');
+    } catch (error) {
+        return ErrorHandler(req, res, next, error);
+    }
+};
+
+const getMonthlySummary = async (req, res, next) => {
+    try {
+        const userId = req.user._id;
+
+        if (!req.query.month || !req.query.year) {
+            return res.status(400).json('Missing required query field(s). Please provide all required data.');
+        }
+
+        const month = Number(req.query.month);
+        const year = Number(req.query.year);
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0);
+
+        const monthlyMoods = await Mood.find({
+            userId,
+            timestamp: {
+                $gte: startDate,
+                $lte: endDate,
+            },
+        });
+
+        const emojiSummary = {};
+        const noteSummary = [];
+
+        monthlyMoods.forEach((mood) => {
+            if (emojiSummary[mood.emoji]) {
+                emojiSummary[mood.emoji]++;
+            } else {
+                emojiSummary[mood.emoji] = 1;
+            }
+            noteSummary.push(mood.note);
+        });
+
+        return res.json({
+            emojiSummary,
+            noteSummary,
+            monthlyMoods,
+        });
+    } catch (error) {
+        return ErrorHandler(req, res, next, error);
+    }
+};
+
+const getByFilter = async (req, res, next) => {
+    try {
+        const userId = req.user._id;
+        let query = { userId };
+        let order = -1;
+        if (req.query.chronologicalOrder === "true") {
+            order = 1;
+        }
+
+        if (req.query.startDate || req.query.endDate) {
+            const startDate = new Date(req.query.startDate);
+            const endDate = new Date(req.query.endDate);
+
+            if ((!startDate instanceof Date || isNaN(startDate)) || (!endDate instanceof Date || isNaN(endDate))) {
+                return res.status(400).json('Invalid date range.');
+            }
+            startDate.setHours(0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
+            query.timestamp = {
+                $gte: startDate,
+                $lte: endDate,
+            };
+        }
+
+        const data = await Mood.find(query).sort({ timestamp: order });
+        return res.json(data);
+    } catch (error) {
+        return ErrorHandler(req, res, next, error);
+    }
+};
+
+const share = async (req, res, next) => {
+    try {
+        let user = req.user;
+        user = user.toObject();
+        delete user.password;
+
+        let accessToken = jwt.sign(user, accessTokenSecret);
+
+        return res.json({
+            link: `${req.protocol}://${req.get('host')}/mood/share/${accessToken}`
+        });
+    } catch (error) {
+        return ErrorHandler(req, res, next, error);
+    }
+};
+
+const shareData = async (req, res, next) => {
+    try {
+        let jwtPayload = await jwt.verify(req.params.token, accessTokenSecret);
+        if (!jwtPayload || !jwtPayload.username) {
+            throw Error;
+        }
+
+        let user = await User.findOne({ username: jwtPayload.username });
+        if (!user) {
+            throw Error;
+        }
+
+        if (!user.sharingEnabled) {
+            return res.status(403).json('User has disabled sharing.');
+        }
+
+        const data = await Mood.find({ userId: user._id });
+        return res.json(data);
+    } catch (error) {
+        return res.status(400).json('Invalid url.');
+    }
+};
+
+const suggestEmojis = async (req, res, next) => {
+    try {
+        const userId = req.user._id;
+        const { moodNote } = req.body;
+        if (!moodNote) {
+            return res.status(400).json('Missing required field(s). Please provide all required data.');
+        }
+        const suggestions = { ...moodSuggestions };
+
+        const recentMoods = await Mood.find({ userId })
+            .sort({ timestamp: -1 }) // Sort in descending order by timestamp
+            .limit(10); // Limit to the last 10 records
+
+        // Extract mood keywords and emojis from the recent mood records
+        recentMoods.forEach((mood) => {
+            suggestions[mood.note] = mood.emoji;
+        });
+
+        let suggestedEmojis = [];
+
+        // Loop through mood keywords and check if they are present in the mood note
+        for (const keyword in suggestions) {
+            if (keyword.toLowerCase().includes(moodNote.toLowerCase())) {
+                suggestedEmojis.push(suggestions[keyword]);
+            }
+        }
+
+        res.json({ emojis: suggestedEmojis });
+    } catch (error) {
+        return ErrorHandler(req, res, next, error);
+    }
+};
+
+const getEmojiStatistics = async (req, res, next) => {
+  try {
+      const emojiStatisticsData = await Mood.aggregate([
+          {
+              $group: {
+                  _id: '$emoji',
+                  count: { $sum: 1 }, // Count occurrences of each emoji
+              },
           },
-          averageMood: { $avg: '$mood' }
-        }
-      },
-      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
-    ]);
+          {
+              $project: {
+                  _id: 0, // Exclude the _id field from the result
+                  emoji: '$_id', // Rename _id to emoji
+                  count: 1, // Include the count field
+              },
+          },
+      ]).exec();
 
-    // Prepare the data for Chart.js
-    const labels = moods.map(mood => `${mood._id.day}-${mood._id.month}-${mood._id.year}`);
-    const data = moods.map(mood => mood.averageMood);
-
-    // Create a Chart.js configuration
-    const configuration = {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Average Mood',
-          data,
-          fill: false,
-          borderColor: 'rgb(75, 192, 192)',
-          tension: 0.1
-        }]
-      }
-    };
-
-    // Render the chart using Chart.js and chartjs-node-canvas
-    const canvasRenderService = new CanvasRenderService(800, 600);
-    const image = await canvasRenderService.renderToBuffer(configuration);
-
-    // Send the image as a response
-    res.set('Content-Type', 'image/png');
-    res.send(image);  } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve mood insights' });
+      return res.json(emojiStatisticsData);
+  } catch (error) {
+      return ErrorHandler(req, res, next, error);
   }
 };
 
-exports.getEmojiSuggestions = async (req, res) => {
+const getMoodTrends = async (req, res, next) => {
   try {
-    const { note } = req.body;
-    let emojiSuggestions = [];
-    if (note.includes('happy')) {
-      emojiSuggestions.push('😊', '😃', '😄', '😁');
-    } else if (note.includes('sad')) {
-      emojiSuggestions.push('😢', '😭', '😞', '😔');
-    } else if (note.includes('angry')) {
-      emojiSuggestions.push('🤬', '😠', '👿', '💢');
-    } else if (note.includes('excited')) {
-      emojiSuggestions.push('🤩', '🥳', '🎉', '🎊');
-    } else {
-      emojiSuggestions.push('🤔', '😐', '🤷‍♀️', '🤷‍♂️');
-    }
-    res.json({ emojiSuggestions });
+      // Get mood trends data
+      const moodTrends = await Mood.aggregate([
+          {
+              $group: {
+                  _id: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
+                  count: { $sum: 1 },
+              },
+          },
+          { $sort: { _id: 1 } }, // Sort by date in ascending order
+      ]);
+
+      // Extract dates and mood counts from the result
+      const dates = moodTrends.map((trend) => trend._id);
+      const moodCounts = moodTrends.map((trend) => trend.count);
+
+      res.json({ dates, moodCounts });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve emoji suggestions' });
+      return ErrorHandler(req, res, next, error);
   }
 };
 
-exports.getPublicMoodBoard = async (req, res) => {
+const getPublicMoodBoardData = async (req, res, next) => {
   try {
-    // Query the database for all mood entries, grouped by emoji
-    const moods = await Mood.aggregate([
-      { $group: {
-          _id: '$emoji',
-          count: { $sum: 1 },
-        }
-      },
-      { $sort: { count: -1 } }
-    ]);
+      const moodData = await Mood.find();
 
-    res.json(moods);
+      const formattedData = moodData.map((entry) => ({
+          emoji: entry.emoji,
+          note: entry.note,
+          timestamp: entry.timestamp,
+      }));
+
+      res.json(formattedData);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve public mood board data' });
+      return ErrorHandler(req, res, next, error);
   }
+};
+
+module.exports = {
+    add,
+    update,
+    deleteMood,
+    getMonthlySummary,
+    getByFilter,
+    share,
+    shareData,
+    suggestEmojis,
+    getEmojiStatistics,
+    getMoodTrends,
+    getPublicMoodBoardData
 };
