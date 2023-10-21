@@ -2,14 +2,11 @@ const Mood = require('../models/mood');
 const User = require('../models/user');
 const { ErrorHandler } = require('../middleware/authenticate');
 const emojiRegex = require('emoji-regex');
-const accessTokenSecret = process.env.JWT_SECRET || "secret";
+const accessTokenSecret = process.env.JWT_SECRET || "testsecret";
 const jwt = require('jsonwebtoken');
 
+// Define a set of mood suggestions with corresponding emojis
 const moodSuggestions = {
-    happy: '😄',
-    sad: '😢',
-    love: '❤️',
-    excited: '🎉',
     happy: '😄',
     sad: '😢',
     love: '❤️',
@@ -18,46 +15,29 @@ const moodSuggestions = {
     surprise: '😲',
     cool: '😎',
     laughing: '😂',
-    thumbsUp: '👍',
-    thumbsDown: '👎',
-    heartEyes: '😍',
     crying: '😭',
     sleeping: '😴',
-    peace: '✌️',
     celebration: '🥳',
-    thinking: '🤔',
     dancing: '💃',
-    grinning: '😁',
     confused: '😕',
-    nerd: '🤓',
-    zippedMouth: '🤐',
     rainbow: '🌈',
-    clown: '🤡',
     money: '💰',
-    rocket: '🚀',
-    fire: '🔥',
-    heart: '❤️',
-    star: '⭐',
-    sun: '☀️',
-    moon: '🌙',
     party: '🎉',
-    thumbsUp2: '👍🏼',
-    thumbsDown2: '👎🏼',
 };
 
+// Function to check if a text contains only emojis
 const containsOnlyEmoji = (text) => {
     const characters = [...text];
-
     const emojiPattern = emojiRegex();
-
     for (const character of characters) {
         if (!emojiPattern.test(character)) {
             return false;
         }
     }
-
     return true;
 };
+
+// Function to add a new mood entr
 const add = async (req, res, next) => {
     try {
         const user = req.user;
@@ -82,6 +62,7 @@ const add = async (req, res, next) => {
     }
 };
 
+// Function to update an existing mood entry
 const update = async (req, res, next) => {
     try {
         const user = req.user;
@@ -120,6 +101,7 @@ const update = async (req, res, next) => {
     }
 };
 
+// Function to delete a mood entry
 const deleteMood = async (req, res, next) => {
     try {
         const user = req.user;
@@ -139,6 +121,7 @@ const deleteMood = async (req, res, next) => {
     }
 };
 
+// Function to get monthly summary of moods
 const getMonthlySummary = async (req, res, next) => {
     try {
         const userId = req.user._id;
@@ -182,6 +165,7 @@ const getMonthlySummary = async (req, res, next) => {
     }
 };
 
+// Function to get mood entries based on filters
 const getByFilter = async (req, res, next) => {
     try {
         const userId = req.user._id;
@@ -213,6 +197,7 @@ const getByFilter = async (req, res, next) => {
     }
 };
 
+// Function to generate a shareable link for mood data
 const share = async (req, res, next) => {
     try {
         let user = req.user;
@@ -229,6 +214,7 @@ const share = async (req, res, next) => {
     }
 };
 
+// Function to handle shared mood data based on a token
 const shareData = async (req, res, next) => {
     try {
         let jwtPayload = await jwt.verify(req.params.token, accessTokenSecret);
@@ -252,6 +238,7 @@ const shareData = async (req, res, next) => {
     }
 };
 
+// Function to suggest emojis based on mood keywords
 const suggestEmojis = async (req, res, next) => {
     try {
         const userId = req.user._id;
@@ -285,6 +272,7 @@ const suggestEmojis = async (req, res, next) => {
     }
 };
 
+// Function to get emoji usage statistics
 const getEmojiStatistics = async (req, res, next) => {
   try {
       const emojiStatisticsData = await Mood.aggregate([
@@ -309,6 +297,7 @@ const getEmojiStatistics = async (req, res, next) => {
   }
 };
 
+// Function to get mood trends data
 const getMoodTrends = async (req, res, next) => {
   try {
       // Get mood trends data
@@ -332,6 +321,7 @@ const getMoodTrends = async (req, res, next) => {
   }
 };
 
+// Function to get public mood board data
 const getPublicMoodBoardData = async (req, res, next) => {
   try {
       const moodData = await Mood.find();
