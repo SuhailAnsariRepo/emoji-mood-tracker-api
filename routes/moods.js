@@ -1,35 +1,30 @@
 const express = require('express');
 const router = express.Router();
-const moodController = require('../controllers/moodController');
-const authenticate = require('../middleware/authenticate');
+const mood = require('../controllers/mood.controller');
+const { authenticateToken } = require('../controllers/helper.util');
 
-// Authentication Routes
-router.post('/auth/register', moodController.registerUser);
-router.post('/auth/login', moodController.loginUser);
+// Route to add a new mood entry
+router.post('/', authenticateToken, mood.add);
 
-// Mood Entries Routes (Protected with Authentication)
-router.post('/moods', authenticate, moodController.logMood);
-router.get('/moods', authenticate, moodController.getMoodEntries);
-router.put('/moods/:id', authenticate, moodController.updateMood);
-router.delete('/moods/:id', authenticate, moodController.deleteMood);
+// Route to update an existing mood entry by ID
+router.put('/:id', authenticateToken, mood.update);
 
-// Mood Summaries Routes (Protected with Authentication)
-router.get('/moods/summary/:year/:month', authenticate, moodController.getMonthlySummary);
+// Route to delete a mood entry by ID
+router.delete('/:id', authenticateToken, mood.deleteMood);
 
-// Emoji Statistics Routes (Protected with Authentication)
-router.get('/moods/statistics', authenticate, moodController.getEmojiStatistics);
+// Route to get the monthly summary of mood entries
+router.get('/monthly-summary', authenticateToken, mood.getMonthlySummary);
 
-// Sharing and Collaboration Routes (Protected with Authentication)
-router.post('/moods/share', authenticate, moodController.generateShareLink);
-router.put('/moods/share', authenticate, moodController.disableSharing);
+// Route to get mood entries based on specified filters
+router.get('/filter', authenticateToken, mood.getByFilter);
 
-// Data Insights Route (Protected with Authentication)
-router.get('/moods/insights', authenticate, moodController.getMoodInsights);
+// Route to retrieve shared mood data
+router.get('/share', authenticateToken, mood.share);
 
-// Emoji Suggestions Route (Protected with Authentication)
-router.get('/moods/suggestions', authenticate, moodController.getEmojiSuggestions);
+// Route to retrieve shared mood data based on a specific token
+router.get('/share/:token', mood.shareData);
 
-// Public Mood Board Route
-router.get('/moods/public', moodController.getPublicMoodBoard);
+// Route to suggest emojis for mood entries
+router.post('/suggest-emojis', authenticateToken, mood.suggestEmojis);
 
 module.exports = router;
